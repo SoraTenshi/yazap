@@ -15,6 +15,13 @@ const Settings = MakeSettings(enum {
     enable_help,
 });
 
+const PositonalType = enum {
+    string,
+    unsigned_int,
+    signed_int,
+    float,
+};
+
 allocator: Allocator,
 name: []const u8,
 description: ?[]const u8 = null,
@@ -51,6 +58,28 @@ pub fn addArg(self: *Command, new_arg: Arg) !void {
 /// Appends args into the args list
 pub fn addArgs(self: *Command, args: []Arg) !void {
     for (args) |arg| try self.addArg(arg);
+}
+
+/// Appends a positional (non-option) into the arg list
+pub fn addPositionalArg(self: *Command, comptime arg_types: anytype) !void {
+    // Build a string based on the types
+    comptime var type_str: []const u8 = "";
+    inline for (arg_types, 0..) |t, i| {
+        type_str = type_str ++ switch (t) {
+            .string => "str",
+            .unsigned_int => "uint",
+            .signed_int => "int",
+            .float => "float",
+            else => @compileError("Expected Positional Arg type to be of type " ++ @typeName(PositonalType) ++ " found ." ++ @tagName(t)),
+        };
+
+        if (arg_types.len > i + 1) {
+            type_str = type_str ++ "|";
+        }
+    }
+
+    try self.args.append(self.allocator, Arg.init(type_str, null));
+    self.setSetting(.takes_positional_arg);
 }
 
 /// Appends the new subcommand into the subcommands list
